@@ -1,7 +1,6 @@
 image:
   # 초기 GitOps 배포에 사용할 v1 이미지입니다.
-  tag: "e1085bb3cf9b1883197aeb962becad3eb3ba2502"
-
+  tag: "27e956db2294054707f31dde638d613b45724b79"
 config:
   APP_CORS_ALLOWED_ORIGINS: "https://app.side-project.shop"
   APP_IMAGE_STORAGE_S3_BUCKET: "side-project-images-s3"
