@@ -1,0 +1,106 @@
+# Argo CD Helm Chart 10.2.1 / Argo CD v3.4.5 기준입니다.
+# 현재 2대의 t3.small 워커에서 과제와 포트폴리오 실습을 수행하기 위한 Non-HA 구성입니다.
+
+# Argo CD가 같은 Kubernetes 클러스터의 리소스를 관리할 수 있도록
+# ClusterRole과 ClusterRoleBinding을 생성합니다.
+createClusterRoles: true
+
+# Application, AppProject, ApplicationSet 등의 CRD를 설치합니다.
+crds:
+  install: true
+
+  # Helm release를 제거하더라도 CRD와 Application 정보는 보존합니다.
+  keep: true
+
+global:
+  logging:
+    format: text
+    level: info
+
+configs:
+  cm:
+    # 현재는 GitHub SSO 대신 기본 admin 계정으로 로그인합니다.
+    admin.enabled: true
+
+    # Git 저장소 변경을 120초마다 확인합니다.
+    # 최대 60초의 임의 지연이 추가되어 약 2~3분 안에 변경을 감지합니다.
+    timeout.reconciliation: 120s
+    timeout.reconciliation.jitter: 60s
+
+# GitHub SSO는 이번 단계에서 사용하지 않으므로 Dex를 비활성화합니다.
+dex:
+  enabled: false
+
+# 여러 Application을 자동 생성하는 ApplicationSet은 현재 과제에서 사용하지 않습니다.
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Slack, 이메일 등의 배포 알림 기능은 현재 사용하지 않습니다.
+notifications:
+  enabled: false
+
+# 현재 워커가 2대이므로 Redis HA를 사용하지 않습니다.
+redis-ha:
+  enabled: false
+
+# Git 상태와 Kubernetes 상태를 비교하고 동기화를 수행하는 컨트롤러입니다.
+controller:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Git 저장소를 가져오고 Helm Chart를 렌더링하는 Repo Server입니다.
+repoServer:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Web UI와 API를 제공하는 Argo CD Server입니다.
+server:
+  replicas: 1
+
+  service:
+    # 외부에 직접 노출하지 않고 kubectl port-forward로 접근합니다.
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Argo CD 내부 캐시로 사용하는 단일 Redis입니다.
+redis:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
