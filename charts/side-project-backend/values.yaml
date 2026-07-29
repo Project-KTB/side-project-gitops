@@ -1,0 +1,102 @@
+# 생성할 백엔드 Pod 개수입니다.
+replicaCount: 3
+
+# 리소스 이름을 별도로 변경해야 할 때 사용합니다.
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: registry.side-project.shop/side-project-backend
+
+  # 비어 있으면 Chart.yaml의 appVersion을 사용하도록 템플릿을 구성합니다.
+  tag: ""
+
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: registry-credentials
+
+# Helm이 Secret을 생성하지 않고 기존 Secret을 참조합니다.
+existingSecret: backend-env-secret
+
+container:
+  name: backend
+  port: 8080
+
+deployment:
+  revisionHistoryLimit: 5
+  minReadySeconds: 10
+  progressDeadlineSeconds: 300
+  terminationGracePeriodSeconds: 35
+  preStopSleepSeconds: 10
+
+  strategy:
+    maxSurge: 1
+    maxUnavailable: 0
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: http
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 300Mi
+  limits:
+    # 750m은 0.75 CPU 코어입니다.
+    cpu: 750m
+    memory: 512Mi
+
+probes:
+  startup:
+    path: /api/health
+    periodSeconds: 5
+    timeoutSeconds: 2
+
+    # 최대 약 100초 동안 애플리케이션 시작을 기다립니다.
+    failureThreshold: 20
+
+  liveness:
+    path: /api/health
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+  readiness:
+    path: /api/health
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: DoNotSchedule
+
+  # 백엔드가 toleration하지 않는 Control Plane의 NoSchedule taint를
+  # 분산 계산에서 제외합니다.
+  nodeTaintsPolicy: Honor
+
+# 모든 환경에서 공통으로 사용하는 Spring Boot 설정입니다.
+config:
+  SERVER_PORT: "8080"
+  SERVER_SERVLET_CONTEXT_PATH: "/api"
+  SERVER_SHUTDOWN: "graceful"
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: "20s"
+
+# 템플릿은 만들지만 호스트가 확정되기 전까지 생성하지 않습니다.
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+
+  hosts:
+    - host: ""
+      paths:
+        - path: /api
+          pathType: Prefix
+
+  tls: []

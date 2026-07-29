@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+
+rendered*.yaml
+*.tmp
+.DS_Store

@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Deployment 리소스 이름입니다.
+  name: side-project-backend
+  # ConfigMap, Secret, Service와 동일한 Namespace를 사용해야 합니다.
+  namespace: side-project
+  labels:
+    # 리소스를 식별하기 위한 Kubernetes 권장 애플리케이션 라벨입니다.
+    app.kubernetes.io/name: side-project-backend
+spec:
+  # 평상시에 유지할 Pod 개수입니다.
+  replicas: 3
+
+  # 롤백을 위해 보관할 이전 ReplicaSet 개수입니다.
+  revisionHistoryLimit: 5
+
+  # 새 Pod가 Ready가 된 뒤 10초 동안 정상 상태를 유지해야 Available로 판단합니다.
+  minReadySeconds: 10
+
+  # 배포가 300초 동안 진행되지 않으면 ProgressDeadlineExceeded로 처리합니다.
+  progressDeadlineSeconds: 300
+
+  # 기존 Pod를 신규 Pod로 점진적으로 교체하는 Rolling Update 전략입니다.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # replicas 3개보다 신규 Pod를 최대 1개 더 생성할 수 있습니다.
+      # 따라서 업데이트 중 전체 Pod 수는 최대 4개입니다.
+      maxSurge: 1
+
+      # 신규 Pod가 Ready 상태가 되기 전에는 기존 Ready Pod를 제거하지 않습니다.
+      maxUnavailable: 0
+
+  # Deployment가 관리할 Pod를 선택합니다.
+  # Deployment 생성 후 selector는 변경하기 어려우므로 template 라벨과 일치해야 합니다.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: side-project-backend
+
+  # Deployment가 생성하는 Pod의 명세입니다.
+  template:
+    metadata:
+      labels:
+        # 위 selector 및 Service selector와 반드시 일치해야 합니다.
+        app.kubernetes.io/name: side-project-backend
+    spec:
+      # 사설 레지스트리 로그인 정보가 저장된 docker-registry 타입 Secret입니다.
+      imagePullSecrets:
+        - name: registry-credentials
+
+      # Pod 종료 시작부터 강제 종료(SIGKILL)까지 허용하는 전체 시간입니다.
+      # 아래 preStop의 10초도 이 35초에 포함됩니다.
+      terminationGracePeriodSeconds: 35
+
+      # 같은 애플리케이션 Pod가 두 워커 노드에 고르게 배치되도록 제한합니다.
+      topologySpreadConstraints:
+        # 노드별 Pod 개수 차이를 최대 1개까지만 허용합니다.
+        - maxSkew: 1
+          # 노드(hostname)를 기준으로 Pod를 분산합니다.
+          topologyKey: kubernetes.io/hostname
+          # 조건을 지킬 수 없으면 한 노드에 몰아넣지 않고 Pending으로 둡니다.
+          whenUnsatisfiable: DoNotSchedule
+          nodeTaintsPolicy: Honor
+          # 아래 라벨을 가진 백엔드 Pod만 분산 개수 계산에 포함합니다.
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: side-project-backend
+
+      containers:
+        # Spring Boot 백엔드 컨테이너입니다.
+        - name: backend
+          # 첫 배포에는 v1 이미지를 사용하고 이후 kubectl set image로 v2를 적용합니다.
+          image: registry.side-project.shop/side-project-backend:e1085bb3cf9b1883197aeb962becad3eb3ba2502
+
+          # 커밋 해시 기반의 변경되지 않는 태그이므로 노드에 이미지가 있으면 재사용합니다.
+          imagePullPolicy: IfNotPresent
+
+          # 컨테이너가 수신하는 Spring Boot HTTP 포트입니다.
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # 일반 설정은 ConfigMap에서, 민감정보는 Secret에서 환경변수로 주입합니다.
+          envFrom:
+            - configMapRef:
+                name: side-project-backend-config
+            - secretRef:
+                name: side-project-backend-secret
+
+          # requests는 스케줄링 기준, limits는 컨테이너가 사용할 수 있는 상한입니다.
+          resources:
+            requests:
+              # Pod 배치 시 최소 0.25 CPU와 300Mi 메모리가 필요하다고 계산합니다.
+              cpu: 250m
+              memory: 300Mi
+            limits:
+              # CPU는 최대 750코어, 메모리는 최대 512Mi까지 사용할 수 있습니다.
+              cpu: 750m
+              memory: 512Mi
+
+          # Spring Boot의 초기 기동이 완료될 때까지 확인합니다.
+          # 5초 간격으로 최대 30회이므로 최대 약 150초 동안 기동을 기다립니다.
+          # startupProbe 성공 전에는 readinessProbe가 실행되지 않습니다.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              # ports에서 정의한 이름인 http(8080)를 참조합니다.
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 20
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+
+          # Service가 이 Pod로 트래픽을 전달해도 되는지 판단합니다.
+          # /api/health가 연속 3회 실패하면 Service 엔드포인트에서 제외됩니다.
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+            successThreshold: 1
+
+          # 컨테이너에 SIGTERM을 전달하기 전에 10초 동안 대기합니다.
+          # Service의 엔드포인트 변경이 전파되어 신규 요청이 빠져나갈 시간을 확보합니다.
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 10
