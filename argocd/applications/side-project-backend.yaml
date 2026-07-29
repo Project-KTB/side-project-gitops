@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: side-project-backend
+  namespace: argocd
+
+  # Application 삭제 시 Argo CD가 관리하던 리소스도 함께 정리합니다.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  # Argo CD 기본 Project를 사용합니다.
+  project: default
+
+  # Argo CD가 감시할 Git 저장소와 Helm Chart 위치입니다.
+  source:
+    repoURL: https://github.com/Project-KTB/side-project-gitops.git
+    targetRevision: main
+    path: charts/side-project-backend
+
+    helm:
+      releaseName: side-project-backend
+      valueFiles:
+        - values-prod.yaml
+
+  # 현재 Argo CD가 설치된 Kubernetes 클러스터에 배포합니다.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: side-project
+
+  # Git 변경 사항을 자동으로 클러스터에 반영합니다.
+  syncPolicy:
+    automated:
+      # Git에서 삭제된 리소스를 클러스터에서도 삭제합니다.
+      prune: true
+
+      # 클러스터에서 수동 변경된 내용을 Git 상태로 복구합니다.
+      selfHeal: true
+
+      # 렌더링 결과가 비어 있을 때 전체 리소스 삭제를 막습니다.
+      allowEmpty: false
+
+    syncOptions:
+      - CreateNamespace=true
