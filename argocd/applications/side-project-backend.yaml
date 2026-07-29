@@ -32,14 +32,14 @@ spec:
   # Git 변경 사항을 자동으로 클러스터에 반영합니다.
   syncPolicy:
     automated:
-      # Git에서 삭제된 리소스를 클러스터에서도 삭제합니다.
-      prune: true
+      # Git 변경을 감지하더라도 자동으로 배포하지 않습니다.
+      enabled: false
 
-      # 클러스터에서 수동 변경된 내용을 Git 상태로 복구합니다.
-      selfHeal: true
+      # Git에서 리소스가 삭제돼도 자동으로 제거하지 않습니다.
+      prune: false
 
-      # 렌더링 결과가 비어 있을 때 전체 리소스 삭제를 막습니다.
-      allowEmpty: false
+      # 클러스터의 수동 변경을 자동 복구하지 않습니다.
+      selfHeal: false
 
     syncOptions:
       - CreateNamespace=true
