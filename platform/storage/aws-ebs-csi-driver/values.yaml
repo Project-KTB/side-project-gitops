@@ -1,0 +1,47 @@
+aws-ebs-csi-driver:
+  controller:
+    # 현재 클러스터 규모에서는 1개로 시작합니다.
+    replicaCount: 1
+
+    # IMDS에서 Region을 조회하지 않아도 되도록 명시합니다.
+    region: ap-northeast-2
+
+    # IAM Instance Profile 접근이 확인된 워커 노드에 고정합니다.
+    nodeSelector:
+      storage-controller: "true"
+
+    enableMetrics: false
+
+  node:
+    enableLinux: true
+    enableWindows: false
+
+    # 각 EC2 노드의 IMDS 메타데이터에 접근하기 위해 사용합니다.
+    hostNetwork: true
+    metadataSources: "imds"
+
+    # Control Plane을 제외한 워커 노드에만 배포합니다.
+    nodeSelector:
+      workload: observability
+    # dedicated=observability:NoSchedule가 설정된 노드에도 실행합니다.
+    tolerateAllTaints: true
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    enableMetrics: false
+
+storageClass:
+  enabled: true
+  name: gp3
+  default: true
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+
+  parameters:
+    type: gp3
+    encrypted: "true"
+    fsType: ext4
