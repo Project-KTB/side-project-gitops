@@ -24,6 +24,8 @@ spec:
 
   template:
     metadata:
+      annotations:
+        side-project.shop/rollout-revision: {{ .Values.deployment.rolloutRevision | quote }}
       labels:
         {{- include "side-project-backend.selectorLabels" . | nindent 8 }}
 

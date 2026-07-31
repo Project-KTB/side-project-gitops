@@ -24,6 +24,9 @@ container:
   port: 8080
 
 deployment:
+  # 과제용 Rolling Update 식별값입니다.
+  rolloutRevision: "assignment-v1"
+
   revisionHistoryLimit: 5
   minReadySeconds: 10
   progressDeadlineSeconds: 300
