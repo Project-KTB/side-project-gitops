@@ -25,7 +25,7 @@ container:
 
 deployment:
   # 과제용 Rolling Update 식별값입니다.
-  rolloutRevision: "assignment-v1"
+  rolloutRevision: "assignment-v2-recording"
 
   revisionHistoryLimit: 5
   minReadySeconds: 10
