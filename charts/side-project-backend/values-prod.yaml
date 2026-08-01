@@ -34,3 +34,6 @@ ingress:
           pathType: Prefix
   # 우선 HTTP 라우팅을 확인하고 TLS는 이후 구성합니다.
   tls: []
+
+serviceMonitor:
+  enabled: true

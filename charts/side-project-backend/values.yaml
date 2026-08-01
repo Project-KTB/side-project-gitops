@@ -107,3 +107,16 @@ ingress:
 
   tls: []
 
+serviceMonitor:
+  # 기본 환경에서는 생성하지 않습니다.
+  enabled: false
+
+  # monitoring-stack Prometheus의 serviceMonitorSelector와 일치해야 합니다.
+  releaseLabel: monitoring-stack
+
+  # Spring Boot Actuator Prometheus 엔드포인트입니다.
+  path: /actuator/prometheus
+
+  # Prometheus 수집 주기와 요청 제한 시간입니다.
+  interval: 30s
+  scrapeTimeout: 10s

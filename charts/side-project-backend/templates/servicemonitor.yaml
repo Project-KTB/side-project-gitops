@@ -1,0 +1,33 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+
+metadata:
+  name: {{ include "side-project-backend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+
+  labels:
+    {{- include "side-project-backend.labels" . | nindent 4 }}
+
+    # Prometheus의 serviceMonitorSelector와 일치시키는 라벨입니다.
+    release: {{ .Values.serviceMonitor.releaseLabel | quote }}
+
+spec:
+  # 이 Namespace의 Service를 검색합니다.
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace | quote }}
+
+  # 백엔드 Service의 라벨과 일치해야 합니다.
+  selector:
+    matchLabels:
+      {{- include "side-project-backend.selectorLabels" . | nindent 6 }}
+
+  endpoints:
+    # Service에 정의된 metrics 포트 이름을 참조합니다.
+    - port: metrics
+      scheme: http
+      path: {{ .Values.serviceMonitor.path | quote }}
+      interval: {{ .Values.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | quote }}
+{{- end }}
