@@ -59,6 +59,10 @@ spec:
             - name: http
               containerPort: {{ .Values.container.port }}
               protocol: TCP
+          # Prometheus가 Actuator 메트릭을 수집하는 내부 관리 포트입니다.
+            - name: metrics
+              containerPort: {{ .Values.container.metricsPort }}
+              protocol: TCP
 
           envFrom:
             - configMapRef:

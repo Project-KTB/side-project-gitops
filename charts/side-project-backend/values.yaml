@@ -22,6 +22,7 @@ existingSecret: backend-env-secret
 container:
   name: backend
   port: 8080
+  metricsPort: 9090
 
 deployment:
   # 과제용 Rolling Update 식별값입니다.
@@ -41,6 +42,7 @@ service:
   type: ClusterIP
   port: 8080
   targetPort: http
+  metricsPort: 9090
 
 resources:
   requests:
@@ -53,7 +55,7 @@ resources:
 
 probes:
   startup:
-    path: /api/health
+    path: /api/livez
     periodSeconds: 5
     timeoutSeconds: 2
 
@@ -61,13 +63,13 @@ probes:
     failureThreshold: 20
 
   liveness:
-    path: /api/health
+    path: /api/livez
     periodSeconds: 10
     timeoutSeconds: 2
     failureThreshold: 3
 
   readiness:
-    path: /api/health
+    path: /api/readyz
     periodSeconds: 5
     timeoutSeconds: 2
     failureThreshold: 3
@@ -87,6 +89,7 @@ topologySpreadConstraints:
 config:
   SERVER_PORT: "8080"
   SERVER_SERVLET_CONTEXT_PATH: "/api"
+  MANAGEMENT_SERVER_PORT: "9090"
   SERVER_SHUTDOWN: "graceful"
   SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: "20s"
 
@@ -103,3 +106,4 @@ ingress:
           pathType: Prefix
 
   tls: []
+
