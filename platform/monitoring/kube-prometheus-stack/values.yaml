@@ -209,11 +209,21 @@ kube-prometheus-stack:
 
     resources:
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 100m
+        memory: 256Mi
       limits:
-        cpu: 300m
-        memory: 300Mi
+        cpu: 500m
+        memory: 512Mi
+
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: grafana
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
     grafana.ini:
       analytics:
