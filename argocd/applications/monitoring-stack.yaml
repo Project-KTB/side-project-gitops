@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Project-KTB/side-project-gitops.git
+    targetRevision: main
+    path: platform/monitoring/kube-prometheus-stack
+
+    helm:
+      releaseName: monitoring-stack
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: false
+      selfHeal: false
+
+    syncOptions:
+      # monitoring Namespace가 없을 경우 생성합니다.
+      - CreateNamespace=true
+
+      # 대용량 Prometheus CRD를 client-side annotation 없이 적용합니다.
+      - ServerSideApply=true
+
+      # 첫 동기화에서 CRD와 Custom Resource가 함께 생성될 수 있게 합니다.
+      - SkipDryRunOnMissingResource=true

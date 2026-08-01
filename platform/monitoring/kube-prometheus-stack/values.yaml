@@ -1,0 +1,223 @@
+kube-prometheus-stack:
+  crds:
+    enabled: true
+
+  # 현재 과제 범위는 Prometheus와 Grafana 구축이므로
+  # Alertmanager는 자원 절약을 위해 우선 비활성화합니다.
+  alertmanager:
+    enabled: false
+
+  # 현재 kubeadm Control Plane 구성요소의 metrics endpoint는
+  # Pod 네트워크에서 접근 가능한지 확인되지 않았으므로 우선 제외합니다.
+  kubeControllerManager:
+    enabled: false
+
+  kubeScheduler:
+    enabled: false
+
+  kubeEtcd:
+    enabled: false
+
+  kubeProxy:
+    enabled: false
+
+  # 비활성화한 대상에 대한 오탐 알림 규칙도 함께 끕니다.
+  defaultRules:
+    rules:
+      alertmanager: false
+      etcd: false
+      kubeControllerManager: false
+      kubeProxy: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+
+  kubeApiServer:
+    enabled: true
+
+  kubelet:
+    enabled: true
+
+  coreDns:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  nodeExporter:
+    enabled: true
+
+  prometheusOperator:
+    enabled: true
+
+    nodeSelector:
+      workload: observability
+
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 100Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+
+  kube-state-metrics:
+    nodeSelector:
+      workload: observability
+
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi
+
+  # 각 Kubernetes 노드의 OS·CPU·메모리·디스크 지표를 수집하므로
+  # 관측 노드뿐 아니라 전체 노드에 DaemonSet으로 배치합니다.
+  prometheus-node-exporter:
+    tolerations:
+      - operator: Exists
+
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  prometheus:
+    enabled: true
+
+    service:
+      type: ClusterIP
+
+    prometheusSpec:
+      replicas: 1
+
+      # 실습 클러스터 자원을 고려해 3일 동안 보관합니다.
+      retention: 3d
+
+      # 8Gi PVC가 가득 차기 전에 오래된 블록을 정리합니다.
+      retentionSize: "6GB"
+
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      walCompression: true
+      enableAdminAPI: false
+
+      nodeSelector:
+        workload: observability
+
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: observability
+          effect: NoSchedule
+
+      # 가능하면 38-42 노드에 배치하지만, 장애 시 다른 관측 노드에도
+      # 스케줄링할 수 있도록 preferred 조건으로 설정합니다.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ip-172-31-38-42
+
+      resources:
+        requests:
+          cpu: 200m
+          memory: 400Mi
+        limits:
+          cpu: 750m
+          memory: 768Mi
+
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes:
+              - ReadWriteOnce
+            volumeMode: Filesystem
+            resources:
+              requests:
+                storage: 8Gi
+
+  grafana:
+    enabled: true
+    replicas: 1
+
+    # 비밀번호를 Git에 기록하지 않고 기존 Secret을 참조합니다.
+    admin:
+      existingSecret: grafana-admin-credentials
+      userKey: admin-user
+      passwordKey: admin-password
+
+    defaultDashboardsEnabled: true
+
+    service:
+      type: ClusterIP
+
+    # 첫 설치에서는 외부에 공개하지 않고 port-forward로 검증합니다.
+    ingress:
+      enabled: false
+
+    persistence:
+      enabled: true
+      type: pvc
+      storageClassName: gp3
+      accessModes:
+        - ReadWriteOnce
+      size: 2Gi
+
+    nodeSelector:
+      workload: observability
+
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    # Prometheus와 분산되도록 46-162 노드를 우선 사용합니다.
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - ip-172-31-46-162
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 300Mi
+
+    grafana.ini:
+      analytics:
+        reporting_enabled: false
+        check_for_updates: false
+      users:
+        allow_sign_up: false
