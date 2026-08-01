@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: metrics-server
+  namespace: argocd
+
+  # Application 삭제 시 관리하던 리소스도 함께 정리합니다.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Project-KTB/side-project-gitops.git
+    targetRevision: main
+    path: platform/monitoring/metrics-server
+
+    helm:
+      releaseName: metrics-server
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+
+  # 기존 운영 방식과 동일하게 수동 동기화합니다.
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: false
+      selfHeal: false

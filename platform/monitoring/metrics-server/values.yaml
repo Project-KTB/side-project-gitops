@@ -1,0 +1,42 @@
+metrics-server:
+  # 현재 규모에서는 1개로 운영합니다.
+  # Metrics Server는 장기 메트릭 저장소가 아니므로 PV가 필요하지 않습니다.
+  replicas: 1
+
+  # kubeadm 실습 환경의 kubelet serving certificate는
+  # 노드 Internal IP가 SAN에 없을 수 있으므로 인증서 검증을 생략합니다.
+  # 운영 환경에서는 CA가 서명한 kubelet 인증서를 사용하는 것이 권장됩니다.
+  args:
+    - --kubelet-insecure-tls
+
+  # Kubernetes Aggregation API가 Metrics Server의 자체 서명 인증서를
+  # 사용할 수 있도록 설정합니다.
+  apiService:
+    create: true
+    insecureSkipTLSVerify: true
+
+  # 관측 전용 노드에만 배치합니다.
+  nodeSelector:
+    workload: observability
+
+  # dedicated=observability:NoSchedule taint를 허용합니다.
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: observability
+      effect: NoSchedule
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+
+  # Flannel Pod 네트워크를 사용하므로 hostNetwork는 사용하지 않습니다.
+  hostNetwork:
+    enabled: false

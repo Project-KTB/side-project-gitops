@@ -1,0 +1,12 @@
+apiVersion: v2
+name: side-project-metrics-server
+description: Metrics Server for the Side Project Kubernetes cluster
+type: application
+
+version: 0.1.0
+appVersion: "0.8.1"
+
+dependencies:
+  - name: metrics-server
+    version: 3.13.1
+    repository: https://kubernetes-sigs.github.io/metrics-server/
