@@ -1,0 +1,151 @@
+loki:
+  # 소규모 클러스터이므로 모든 Loki 컴포넌트를 하나의 프로세스로 실행합니다.
+  deploymentMode: Monolithic
+
+  loki:
+    # 클러스터 내부에서만 사용하므로 Loki 멀티테넌트 인증은 사용하지 않습니다.
+    auth_enabled: false
+
+    commonConfig:
+      # 단일 Replica에서는 반드시 1이어야 합니다.
+      replication_factor: 1
+
+    # Loki 3.x에서 권장하는 TSDB 인덱스와 v13 스키마를 사용합니다.
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+
+    # EBS PVC에 마운트되는 로컬 파일시스템을 사용합니다.
+    storage:
+      type: filesystem
+
+    # 3일이 지난 로그를 Compactor가 삭제합니다.
+    compactor:
+      retention_enabled: true
+      delete_request_store: filesystem
+      retention_delete_delay: 2h
+      retention_delete_worker_count: 50
+
+    limits_config:
+      retention_period: 72h
+      allow_structured_metadata: true
+
+    # 사용 통계 전송을 비활성화합니다.
+    analytics:
+      reporting_enabled: false
+
+  singleBinary:
+    replicas: 1
+
+    sidecar: false
+
+    persistence:
+      enabled: true
+      storageClass: gp3
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+
+      # StatefulSet 삭제 시 PVC 자동 삭제 기능을 사용하지 않습니다.
+      enableStatefulSetAutoDeletePVC: false
+
+    nodeSelector:
+      workload: observability
+
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Alloy와 Grafana가 접근할 내부 Nginx Gateway입니다.
+  gateway:
+    enabled: true
+    replicas: 1
+
+    metrics:
+      enabled: false
+
+    nodeSelector:
+      workload: observability
+
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+    ingress:
+      enabled: false
+
+  # Loki Rule을 사용하지 않으므로 Rule Sidecar 기능을 비활성화합니다.
+  sidecar:
+    rules:
+      enabled: false
+
+  # t3.small 환경에서는 기본 Memcached 크기를 수용할 수 없습니다.
+  chunksCache:
+    enabled: false
+
+  resultsCache:
+    enabled: false
+
+  # 별도의 Alloy로 실제 로그 수집을 검증하므로 Canary를 생략합니다.
+  lokiCanary:
+    enabled: false
+
+  test:
+    enabled: false
+
+  # Monolithic 이외의 배포 모드는 모두 비활성화합니다.
+  backend:
+    replicas: 0
+
+  read:
+    replicas: 0
+
+  write:
+    replicas: 0
+
+  ingester:
+    replicas: 0
+
+  querier:
+    replicas: 0
+
+  queryFrontend:
+    replicas: 0
+
+  queryScheduler:
+    replicas: 0
+
+  distributor:
+    replicas: 0
+
+  compactor:
+    replicas: 0
+
+  indexGateway:
+    replicas: 0

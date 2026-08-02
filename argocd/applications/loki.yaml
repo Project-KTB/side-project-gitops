@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: loki
+  namespace: argocd
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Project-KTB/side-project-gitops.git
+    targetRevision: main
+    path: platform/logging/loki
+
+    helm:
+      releaseName: loki
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+
+  # Git 변경 감지만 하고 실제 반영은 수동으로 실행합니다.
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: false
+      selfHeal: false
+
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: side-project-loki
+description: Loki monolithic logging stack for Side Project
+type: application
+
+version: 0.1.0
+appVersion: "3.7.4"
+
+dependencies:
+  - name: loki
+    version: "18.7.1"
+    repository: "https://grafana-community.github.io/helm-charts"
