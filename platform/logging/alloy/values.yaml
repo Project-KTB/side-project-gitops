@@ -1,0 +1,169 @@
+alloy:
+  # 현재 사용하지 않는 Alloy 전용 CRD는 설치하지 않습니다.
+  crds:
+    create: false
+
+  alloy:
+    enableReporting: false
+
+    clustering:
+      enabled: false
+
+    configMap:
+      create: true
+      content: |-
+        logging {
+          level  = "info"
+          format = "logfmt"
+        }
+
+        discovery.kubernetes "pods" {
+          role = "pod"
+
+          selectors {
+            role  = "pod"
+            field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+          }
+        }
+
+        discovery.relabel "pod_logs" {
+          targets = discovery.kubernetes.pods.targets
+
+          rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            action        = "replace"
+            target_label  = "namespace"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            action        = "replace"
+            target_label  = "pod"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            action        = "replace"
+            target_label  = "container"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            action        = "replace"
+            target_label  = "node"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+            action        = "replace"
+            target_label  = "app"
+          }
+
+          rule {
+            source_labels = [
+              "__meta_kubernetes_namespace",
+              "__meta_kubernetes_pod_container_name",
+            ]
+            separator    = "/"
+            action       = "replace"
+            replacement  = "$1"
+            target_label = "job"
+          }
+
+          rule {
+            source_labels = [
+              "__meta_kubernetes_pod_uid",
+              "__meta_kubernetes_pod_container_name",
+            ]
+            separator    = "/"
+            action       = "replace"
+            replacement  = "/var/log/pods/*$1/*.log"
+            target_label = "__path__"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_id"]
+            action        = "replace"
+            regex         = `^(\S+):\/\/.+$`
+            replacement   = "$1"
+            target_label  = "tmp_container_runtime"
+          }
+        }
+
+        local.file_match "pod_logs" {
+          path_targets = discovery.relabel.pod_logs.output
+        }
+
+        loki.source.file "pod_logs" {
+          targets    = local.file_match.pod_logs.targets
+          forward_to = [loki.process.pod_logs.receiver]
+        }
+
+        loki.process "pod_logs" {
+          stage.match {
+            selector = "{tmp_container_runtime=\"containerd\"}"
+
+            stage.cri {}
+
+            stage.labels {
+              values = {
+                stream = "",
+              }
+            }
+          }
+
+          stage.label_drop {
+            values = ["tmp_container_runtime"]
+          }
+
+          stage.static_labels {
+            values = {
+              cluster = "side-project-kubeadm",
+            }
+          }
+
+          forward_to = [loki.write.local.receiver]
+        }
+
+        loki.write "local" {
+          endpoint {
+            url = "http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push"
+          }
+        }
+
+    # 워커 노드의 /var/log를 읽기 전용으로 마운트합니다.
+    mounts:
+      varlog: true
+
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 192Mi
+
+  controller:
+    type: daemonset
+
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
+
+    # 관측 전용 노드의 NoSchedule Taint도 허용합니다.
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+
+    updateStrategy:
+      type: RollingUpdate
+
+  rbac:
+    create: true
+
+  # Prometheus가 Alloy 자체 상태도 수집할 수 있게 합니다.
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: monitoring-stack

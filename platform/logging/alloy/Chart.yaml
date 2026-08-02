@@ -1,0 +1,11 @@
+apiVersion: v2
+name: side-project-alloy
+description: Grafana Alloy DaemonSet for Kubernetes container logs
+type: application
+version: 0.1.0
+appVersion: "v1.18.0"
+
+dependencies:
+  - name: alloy
+    version: "1.11.0"
+    repository: "https://grafana.github.io/helm-charts"
