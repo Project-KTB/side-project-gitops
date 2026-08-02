@@ -231,3 +231,16 @@ kube-prometheus-stack:
         check_for_updates: false
       users:
         allow_sign_up: false
+
+    additionalDataSources:
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.logging.svc.cluster.local
+        isDefault: false
+        editable: false
+        orgId: 1
+        version: 1
+        jsonData:
+          maxLines: 1000
