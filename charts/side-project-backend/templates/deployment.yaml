@@ -26,6 +26,10 @@ spec:
     metadata:
       annotations:
         side-project.shop/rollout-revision: {{ .Values.deployment.rolloutRevision | quote }}
+        # ConfigMap이 변경되면 Pod Template hash도 변경되어
+        # 자동으로 Rolling Update가 발생합니다.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+
       labels:
         {{- include "side-project-backend.selectorLabels" . | nindent 8 }}
 

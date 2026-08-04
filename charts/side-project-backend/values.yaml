@@ -93,6 +93,21 @@ config:
   SERVER_SHUTDOWN: "graceful"
   SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: "20s"
 
+  # HTTP 요청 응답시간의 histogram bucket을 생성합니다.
+  # Prometheus에서 p95, p99를 계산할 때 사용합니다.
+  SPRING_APPLICATION_JSON: >-
+    {
+      "management": {
+        "metrics": {
+          "distribution": {
+            "percentiles-histogram": {
+              "http.server.requests": true
+            }
+          }
+        }
+      }
+    }
+
 # 템플릿은 만들지만 호스트가 확정되기 전까지 생성하지 않습니다.
 ingress:
   enabled: false
