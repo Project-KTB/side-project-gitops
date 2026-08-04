@@ -1,0 +1,11 @@
+apiVersion: v2
+name: side-project-mysql-exporter
+description: MySQL exporter for the external side-project database
+type: application
+version: 0.1.0
+appVersion: "0.19.0"
+
+dependencies:
+  - name: prometheus-mysql-exporter
+    version: 2.14.0
+    repository: https://prometheus-community.github.io/helm-charts

@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: mysql-exporter
+  namespace: argocd
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Project-KTB/side-project-gitops.git
+    targetRevision: main
+    path: platform/monitoring/mysql-exporter
+
+    helm:
+      releaseName: mysql-exporter
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: false
+      selfHeal: false
+
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,90 @@
+prometheus-mysql-exporter:
+  fullnameOverride: mysql-exporter
+
+  replicaCount: 1
+
+  mysql:
+    host: "172.31.60.240"
+    port: 3306
+    user: mysqld_exporter
+
+    existingPasswordSecret:
+      name: mysql-exporter-credentials
+      key: password
+
+    additionalConfig:
+      - connect-timeout=5
+
+  service:
+    type: ClusterIP
+    externalPort: 9104
+    internalPort: 9104
+
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 30s
+    scrapeTimeout: 10s
+
+    # 현재 Prometheus의 serviceMonitorSelector와 일치해야 합니다.
+    additionalLabels:
+      release: monitoring-stack
+
+  # 이번 관측 목표에 필요한 Collector만 명시합니다.
+  collectors:
+    global_status: true
+    global_variables: true
+
+    # 연결 상태와 스레드 대기 상태를 수집합니다.
+    info_schema.processlist: true
+
+    # Performance Schema의 쿼리 digest 통계를 수집합니다.
+    perf_schema.eventsstatements: true
+    perf_schema.eventsstatements.digest_text_limit: 120
+    perf_schema.eventsstatements.limit: 100
+    perf_schema.eventsstatements.timelimit: 86400
+
+    # 현재 DB는 복제 구성이 아니므로 비활성화합니다.
+    slave_status: false
+    engine_innodb_status: false
+    info_schema.tables: false
+
+  config:
+    logLevel: info
+
+  annotations: {}
+
+  serviceAccount:
+    create: true
+
+  nodeSelector:
+    workload: observability
+
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: observability
+      effect: NoSchedule
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

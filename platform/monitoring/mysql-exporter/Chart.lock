@@ -1,0 +1,6 @@
+dependencies:
+- name: prometheus-mysql-exporter
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 2.14.0
+digest: sha256:d1723e687b41f731430ddb3fc1bd6be8273c3d61ca757462e89dd89d743b55be
+generated: "2026-08-04T06:06:44.699626629Z"
